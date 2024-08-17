@@ -6,6 +6,7 @@ import (
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
 	"gitee.com/geekbang/basic-go/webook/internal/service"
 	regexp "github.com/dlclark/regexp2"
+	"encoding/json"
 
 	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/sessions"
@@ -100,7 +101,6 @@ func (h *UserHandler) SignUp(ctx *gin.Context){
 
 func (h *UserHandler) Login(ctx *gin.Context){
 
-
 	type LoginReq struct{
 		Email string `json:"email"`
 		Password string `json:"password"`
@@ -135,9 +135,70 @@ func (h *UserHandler) Login(ctx *gin.Context){
 }
 
 func (h *UserHandler) Profile(ctx *gin.Context){
-	ctx.String(http.StatusOK, "this is your profile")
+
+	userId, err := h.svc.GetUserIdFromSession(ctx)
+	if err!=nil{
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		ctx.String(http.StatusUnauthorized, "系统错误: %v", err)
+		return
+	}
+	
+	frontUserProfile, err:=  h.svc.GetProfile(ctx, userId)
+	if err!=nil{
+		ctx.String(http.StatusOK, "系统错误: %v", err)
+		return
+	}
+
+	 // 将结构体序列化为JSON
+	 jsonData, err := json.Marshal(frontUserProfile)
+	 if err != nil {
+		 ctx.String(http.StatusInternalServerError, "系统错误: %v", err)
+		 return
+	 }
+ 
+	 // 反序列化为map[string]interface{}
+	 var response map[string]interface{}
+	 err = json.Unmarshal(jsonData, &response)
+	 if err != nil {
+		 ctx.String(http.StatusInternalServerError, "系统错误: %v", err)
+		 return
+	 }
+
+	ctx.JSON(http.StatusOK, response)
 }
+
+
 
 func (h *UserHandler) Edit(ctx *gin.Context){
 	
+	type EditReq struct{
+		NickName string `json:"nickname"`
+		Birthday string `json:"birthday"`
+		AboutMe string `json:"aboutme"`
+	}
+	var req EditReq
+	if err:= ctx.Bind(&req);err!=nil{
+		return 
+	}
+
+	userId, err := h.svc.GetUserIdFromSession(ctx)
+	if err!=nil{
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		ctx.String(http.StatusUnauthorized, "系统错误: %v", err)
+		return
+	}
+
+	println(userId,"edit userId")
+	if err := h.svc.Edit(ctx, domain.UserProfile{
+		UserId: userId,
+		NickName: req.NickName,
+		Birthday: req.Birthday,
+		AboutMe: req.AboutMe,
+	}); err!=nil{
+		
+		ctx.String(http.StatusInternalServerError, "edit profile error:%v", err)
+		return
+	}
+	println("success")
+	ctx.String(http.StatusOK, "Edit successful")
 }

@@ -18,6 +18,24 @@ type UserDao struct {
 	db *gorm.DB
 }
 
+type User struct {
+	Id       int64  `gorm:"primaryKey,autoIncrement"`
+	Email    string `gorm:"unique"`
+	Password string
+	CreateAt int64
+	UpdateAt int64
+}
+
+type UserProfile struct {
+	Id       int64 `gorm:"primaryKey,autoIncrement"`
+	UserId   int64 `gorm:"unique"`
+	NickName string
+	Birthday string
+	AboutMe  string
+	CreateAt int64
+	UpdateAt int64
+}
+
 func NewUserDao(db *gorm.DB) *UserDao {
 	return &UserDao{
 		db: db,
@@ -39,18 +57,32 @@ func (dao *UserDao) Insert(ctx context.Context, user User) error {
 	return err
 }
 
+func (dao *UserDao) InsertProfile(ctx context.Context, userProfile UserProfile) error {
+	now := time.Now().UnixMilli()
+	userProfile.CreateAt = now
+	userProfile.UpdateAt = now
+	err := dao.db.WithContext(ctx).Create(&userProfile).Error
+	return err
+}
+
+func (dao *UserDao) SetProfile(ctx context.Context, userProfile UserProfile) error {
+	now := time.Now().UnixMilli()
+	userProfile.UpdateAt = now
+	err := dao.db.WithContext(ctx).Save(&userProfile).Error
+	return err
+}
+
 func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
-	
+
 	var u User
-	err := dao.db.WithContext(ctx).Where("email=?",email).First(&u).Error
+	err := dao.db.WithContext(ctx).Where("email=?", email).First(&u).Error
 	return u, err
 
 }
 
-type User struct {
-	Id       int64  `gorm:"primaryKey,autoIncrement"`
-	Email    string `gorm:"unique"`
-	Password string
-	CreateAt int64
-	UpdateAt int64
+func (dao *UserDao) FindProfileById(ctx context.Context, userId int64) (UserProfile, error) {
+	var userProfile UserProfile
+	err := dao.db.WithContext(ctx).Where("user_id=?", userId).First(&userProfile).Error
+	return userProfile, err
+
 }

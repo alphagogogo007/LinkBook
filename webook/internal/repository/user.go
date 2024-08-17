@@ -50,3 +50,51 @@ func (repo *UserRepository) toDomain(u dao.User) domain.User{
 	}
 
 }
+
+func (repo *UserRepository) toDomainProfile(u dao.UserProfile) domain.UserProfile{
+	return domain.UserProfile{
+		UserId: u.UserId,
+		NickName: u.NickName,
+		Birthday: u.Birthday,
+		AboutMe: u.AboutMe,
+		RestParam: domain.RestParam{
+			Id: u.Id,
+			CreateAt: u.CreateAt,
+			UpdateAt: u.UpdateAt,
+		},
+	}
+
+}
+
+func (repo *UserRepository) FindProfileById(ctx context.Context, userId int64) (domain.UserProfile, error){
+	userProfile, err  := repo.dao.FindProfileById(ctx, userId)
+	if err!=nil{
+		  return domain.UserProfile{}, err
+	}
+	return  repo.toDomainProfile(userProfile), nil
+
+}
+
+func (repo *UserRepository) CreateProfile(ctx context.Context, userProfile domain.UserProfile) error{
+	err := repo.dao.InsertProfile(ctx, dao.UserProfile{
+		 UserId: userProfile.UserId,
+		 NickName: userProfile.NickName,
+		 Birthday: userProfile.Birthday,
+		 AboutMe: userProfile.AboutMe,
+	})
+	return err
+}
+
+func (repo *UserRepository) OverwriteProfle(ctx context.Context, userProfile domain.UserProfile) error{
+
+	err := repo.dao.SetProfile(ctx, dao.UserProfile{
+		Id: userProfile.RestParam.Id,
+		UserId: userProfile.UserId,
+		NickName: userProfile.NickName,
+		Birthday: userProfile.Birthday,
+		AboutMe: userProfile.AboutMe,
+		CreateAt: userProfile.RestParam.CreateAt,
+   })
+   return err
+	
+}
