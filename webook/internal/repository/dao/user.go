@@ -22,19 +22,14 @@ type User struct {
 	Id       int64  `gorm:"primaryKey,autoIncrement"`
 	Email    string `gorm:"unique"`
 	Password string
+	Nickname string `gorm:"type=varchar(128)"`
+	Birthday int64
+	AboutMe  string `gorm:"type=varchar(4096)"`
 	CreateAt int64
 	UpdateAt int64
 }
 
-type UserProfile struct {
-	Id       int64 `gorm:"primaryKey,autoIncrement"`
-	UserId   int64 `gorm:"unique"`
-	NickName string
-	Birthday string
-	AboutMe  string
-	CreateAt int64
-	UpdateAt int64
-}
+
 
 func NewUserDao(db *gorm.DB) *UserDao {
 	return &UserDao{
@@ -57,20 +52,22 @@ func (dao *UserDao) Insert(ctx context.Context, user User) error {
 	return err
 }
 
-func (dao *UserDao) InsertProfile(ctx context.Context, userProfile UserProfile) error {
-	now := time.Now().UnixMilli()
-	userProfile.CreateAt = now
-	userProfile.UpdateAt = now
-	err := dao.db.WithContext(ctx).Create(&userProfile).Error
-	return err
+
+func (dao *UserDao) UpdateById(ctx context.Context, entity User) error {
+
+	// 这种写法依赖于 GORM 的零值和主键更新特性
+	// Update 非零值 WHERE id = ?
+	//return dao.db.WithContext(ctx).Updates(&entity).Error
+	return dao.db.WithContext(ctx).Model(&entity).Where("id = ?", entity.Id).
+		Updates(map[string]any{
+			"create_at":    time.Now().UnixMilli(),
+			"nickname": entity.Nickname,
+			"birthday": entity.Birthday,
+			"about_me": entity.AboutMe,
+		}).Error
 }
 
-func (dao *UserDao) SetProfile(ctx context.Context, userProfile UserProfile) error {
-	now := time.Now().UnixMilli()
-	userProfile.UpdateAt = now
-	err := dao.db.WithContext(ctx).Save(&userProfile).Error
-	return err
-}
+
 
 func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error) {
 
@@ -80,9 +77,9 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error)
 
 }
 
-func (dao *UserDao) FindProfileById(ctx context.Context, userId int64) (UserProfile, error) {
-	var userProfile UserProfile
-	err := dao.db.WithContext(ctx).Where("user_id=?", userId).First(&userProfile).Error
-	return userProfile, err
 
+func (dao *UserDao) FindById(ctx context.Context, uid int64) (User, error) {
+	var res User
+	err := dao.db.WithContext(ctx).Where("id = ?", uid).First(&res).Error
+	return res, err
 }
