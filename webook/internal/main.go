@@ -10,9 +10,9 @@ import (
 	"gitee.com/geekbang/basic-go/webook/internal/web"
 	login "gitee.com/geekbang/basic-go/webook/internal/web/middleware"
 	"github.com/gin-contrib/cors"
-	"github.com/gin-contrib/sessions/cookie"
-	"github.com/gin-gonic/gin"
 	"github.com/gin-contrib/sessions"
+	"github.com/gin-contrib/sessions/redis"
+	"github.com/gin-gonic/gin"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -21,7 +21,6 @@ func main() {
 
 	db := initDB()
 	server := initWebServer()
-
 
 	initUserHdl(db, server)
 
@@ -38,35 +37,31 @@ func initUserHdl(db *gorm.DB, server *gin.Engine) {
 	hdl.RegisterRoutes(server)
 }
 
-func initDB() *gorm.DB{
+func initDB() *gorm.DB {
 
-	
 	db, err := gorm.Open(mysql.Open("root:root@tcp(localhost:13316)/webook"))
-	if err!=nil{
+	if err != nil {
 		panic(err)
 	}
 
 	err = dao.InitTables(db)
-	if err!=nil{
+	if err != nil {
 		panic(err)
 	}
 	return db
 
-	
 }
 
-func initWebServer() *gin.Engine{
+func initWebServer() *gin.Engine {
 
-	
 	server := gin.Default()
-
-	
 
 	server.Use(cors.New(cors.Config{
 		//AllowAllOrigins: true,
 		//AllowOrigins:     []string{"http://localhost:3000"},
 		AllowCredentials: true,
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
+		ExposeHeaders: []string{"x-jwt-token"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				//if strings.Contains(origin, "localhost") {
@@ -77,11 +72,22 @@ func initWebServer() *gin.Engine{
 		MaxAge: 12 * time.Hour,
 	}))
 
+	useJWT(server)
 
-
-	login := &login.LoginMiddlewareBuiler{}
-	store := cookie.NewStore([]byte("secret"))
-
-	server.Use(	sessions.Sessions("ssid", store), login.CheckLogin())
 	return server
+}
+
+func useJWT(server *gin.Engine){
+	login := &login.LoginJWTMiddlewareBuiler{}
+	server.Use(login.CheckLogin())
+}
+
+func useSession(server *gin.Engine){
+	login := &login.LoginMiddlewareBuiler{}
+	store, err := redis.NewStore(16, "tcp","localhost:6379","", []byte("uVCS5zcJSVZjNYoQOJxd9XOYmTUjQ3lP"), []byte("7NcCe8cUJHcaRQa95Xl5isayrYrfijmX"))
+	if err!=nil{
+		panic(err)
+	}
+
+	server.Use(sessions.Sessions("ssid", store), login.CheckLogin())
 }

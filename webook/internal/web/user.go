@@ -1,6 +1,8 @@
 package web
 
 import (
+
+	"log"
 	"net/http"
 	"time"
 
@@ -10,17 +12,25 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+
+	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 const (
 	emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	passwordRegexPattern = `^.{8,}$`
+	JWTKey               = "jYe8vbdGFD7RRnIf8W7KArU2ehZJbbn8"
 )
 
 type UserHandler struct {
 	emailRexExp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
 	svc            *service.UserService
+}
+
+type UserClaims struct {
+	jwt.RegisteredClaims
+	Uid int64
 }
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
@@ -35,7 +45,7 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 
 	ug := server.Group("/users")
 	ug.POST("/signup", h.SignUp)
-	ug.POST("/login", h.Login)
+	ug.POST("/login", h.LoginJWT)
 	ug.GET("/profile", h.Profile)
 	ug.POST("/edit", h.Edit)
 }
@@ -128,14 +138,60 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 
 }
 
-func (h *UserHandler) Profile(ctx *gin.Context) {
+func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 
-	userId, err := h.svc.GetUserIdFromSession(ctx)
-	if err != nil {
-		ctx.AbortWithStatus(http.StatusUnauthorized)
-		ctx.String(http.StatusUnauthorized, "系统错误: %v", err)
+	type LoginReq struct {
+		Email           string `json:"email"`
+		Password        string `json:"password"`
+		ConfirmPassword string `json:"confirmpassword"`
+	}
+	var req LoginReq
+	if err := ctx.Bind(&req); err != nil {
 		return
 	}
+	user, err := h.svc.Login(ctx, req.Email, req.Password)
+	switch err {
+	case nil:
+		uc := UserClaims{
+			Uid: user.Id,
+			RegisteredClaims: jwt.RegisteredClaims{
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second*10))},
+		}
+		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
+		tokenStr, err := token.SignedString([]byte(JWTKey))
+		//log.Printf("login token str: %v", tokenStr)
+		if err != nil {
+			ctx.String(http.StatusOK, "系统错误: %v", err)
+		}
+		ctx.Header("x-jwt-token", tokenStr)
+
+		//log.Println("登录成功， tokenStr")
+		ctx.String(http.StatusOK, "登录成功")
+
+	case service.ErrInvalidUserOrPassword:
+		ctx.String(http.StatusOK, "用户名或者密码不对")
+	default:
+		ctx.String(http.StatusOK, "系统错误: %v", err)
+	}
+
+}
+
+func (h *UserHandler) Profile(ctx *gin.Context) {
+
+	// userId, err := h.svc.GetUserIdFromSession(ctx)
+	// if err != nil {
+	// 	ctx.AbortWithStatus(http.StatusUnauthorized)
+	// 	ctx.String(http.StatusUnauthorized, "系统错误: %v", err)
+	// 	return
+	// }
+
+	us, ok := ctx.MustGet("user").(UserClaims)
+	if !ok {
+		log.Println("Type assertion to UserClaims failed")
+		ctx.AbortWithStatus(http.StatusUnauthorized)
+		return
+	}
+	userId := us.Uid
 
 	u, err := h.svc.FindById(ctx, userId)
 	if err != nil {
@@ -180,7 +236,7 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 		return
 	}
 
-	println(userId, "edit userId")
+	//println(userId, "edit userId")
 
 	// check birthday
 	birthday, err := time.Parse(time.DateOnly, req.Birthday)
@@ -199,6 +255,6 @@ func (h *UserHandler) Edit(ctx *gin.Context) {
 		ctx.String(http.StatusInternalServerError, "edit profile error:%v", err)
 		return
 	}
-	println("success")
+	//println("success")
 	ctx.String(http.StatusOK, "Edit successful")
 }
