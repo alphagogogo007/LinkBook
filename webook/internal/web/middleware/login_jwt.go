@@ -55,7 +55,7 @@ func (m *LoginJWTMiddlewareBuiler) CheckLogin() gin.HandlerFunc {
 		//log.Println("token str:", tokenStr)
 		if expireTime.Sub(time.Now()) < time.Second*50 {
 			//刷新 jwt token
-			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Second*10))
+			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute*15))
 			//token中有一个claim指针，所以修改uc.Expire就能直接对token生成tokenstr产生影响
 			tokenStr, err = token.SignedString([]byte(web.JWTKey))
 			ctx.Header("x-jwt-token", tokenStr)

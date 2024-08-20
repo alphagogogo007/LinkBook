@@ -9,10 +9,13 @@ import (
 	"gitee.com/geekbang/basic-go/webook/internal/service"
 	"gitee.com/geekbang/basic-go/webook/internal/web"
 	login "gitee.com/geekbang/basic-go/webook/internal/web/middleware"
+	"gitee.com/geekbang/basic-go/webook/pkg/ginx/middleware/ratelimit"
+	"gitee.com/geekbang/basic-go/webook/pkg/limiter"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-contrib/sessions"
-	"github.com/gin-contrib/sessions/redis"
+	redisSession "github.com/gin-contrib/sessions/redis"
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
 )
@@ -61,7 +64,7 @@ func initWebServer() *gin.Engine {
 		//AllowOrigins:     []string{"http://localhost:3000"},
 		AllowCredentials: true,
 		AllowHeaders:     []string{"Content-Type", "Authorization"},
-		ExposeHeaders: []string{"x-jwt-token"},
+		ExposeHeaders:    []string{"x-jwt-token"},
 		AllowOriginFunc: func(origin string) bool {
 			if strings.HasPrefix(origin, "http://localhost") {
 				//if strings.Contains(origin, "localhost") {
@@ -72,20 +75,32 @@ func initWebServer() *gin.Engine {
 		MaxAge: 12 * time.Hour,
 	}))
 
+
+	useRedisRatelimiter(server)
 	useJWT(server)
 
 	return server
 }
 
-func useJWT(server *gin.Engine){
+func useRedisRatelimiter(server *gin.Engine){
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: "localhost:6379",
+	})
+	redisLimiter := limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)
+
+	server.Use(ratelimit.NewBuilder(redisLimiter).Build())
+}
+
+
+func useJWT(server *gin.Engine) {
 	login := &login.LoginJWTMiddlewareBuiler{}
 	server.Use(login.CheckLogin())
 }
 
-func useSession(server *gin.Engine){
+func useSession(server *gin.Engine) {
 	login := &login.LoginMiddlewareBuiler{}
-	store, err := redis.NewStore(16, "tcp","localhost:6379","", []byte("uVCS5zcJSVZjNYoQOJxd9XOYmTUjQ3lP"), []byte("7NcCe8cUJHcaRQa95Xl5isayrYrfijmX"))
-	if err!=nil{
+	store, err := redisSession.NewStore(16, "tcp", "localhost:6379", "", []byte("uVCS5zcJSVZjNYoQOJxd9XOYmTUjQ3lP"), []byte("7NcCe8cUJHcaRQa95Xl5isayrYrfijmX"))
+	if err != nil {
 		panic(err)
 	}
 

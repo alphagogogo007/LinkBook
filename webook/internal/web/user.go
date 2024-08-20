@@ -155,7 +155,7 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 		uc := UserClaims{
 			Uid: user.Id,
 			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Second*10))},
+				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute*15))},
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
 		tokenStr, err := token.SignedString([]byte(JWTKey))
