@@ -31,6 +31,7 @@ type UserHandler struct {
 type UserClaims struct {
 	jwt.RegisteredClaims
 	Uid int64
+	UserAgent string
 }
 
 func NewUserHandler(svc *service.UserService) *UserHandler {
@@ -154,6 +155,7 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 	case nil:
 		uc := UserClaims{
 			Uid: user.Id,
+			UserAgent: ctx.GetHeader("User-Agent"),
 			RegisteredClaims: jwt.RegisteredClaims{
 				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute*15))},
 		}

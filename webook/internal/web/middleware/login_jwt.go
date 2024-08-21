@@ -42,10 +42,16 @@ func (m *LoginJWTMiddlewareBuiler) CheckLogin() gin.HandlerFunc {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
-		if !token.Valid {
+		if token==nil || !token.Valid {
 			ctx.AbortWithStatus(http.StatusUnauthorized)
 			return
 		}
+		if uc.UserAgent!=ctx.GetHeader("User-Agent"){
+			// Need to track events here
+			ctx.AbortWithStatus(http.StatusUnauthorized)
+			return
+		}
+
 		expireTime := uc.ExpiresAt
 		//log.Println("expire time", expireTime.Time)
 		// if expireTime.Before(time.Now()){
@@ -53,7 +59,7 @@ func (m *LoginJWTMiddlewareBuiler) CheckLogin() gin.HandlerFunc {
 		// 	return
 		// }
 		//log.Println("token str:", tokenStr)
-		if expireTime.Sub(time.Now()) < time.Second*50 {
+		if expireTime.Sub(time.Now()) < time.Minute*3 {
 			//刷新 jwt token
 			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute*15))
 			//token中有一个claim指针，所以修改uc.Expire就能直接对token生成tokenstr产生影响

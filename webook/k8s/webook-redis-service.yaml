@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: webook-redis
+spec:
+  selector:
+    app: webook-redis
+  ports:
+  - port: 6379
+  # external port must be 30000-32767
+  # 不能使用localhost，所以改为loadbalancer
+    #nodePort: 31379
+    targetPort: 6379
+  type: LoadBalancer
