@@ -83,7 +83,7 @@ func initWebServer() *gin.Engine {
 	}))
 
 
-	useRedisRatelimiter(server)
+	//useRedisRatelimiter(server)
 	useJWT(server)
 
 	return server
