@@ -1,7 +1,6 @@
 package web
 
 import (
-
 	"log"
 	"net/http"
 	"time"
@@ -20,25 +19,28 @@ const (
 	emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	passwordRegexPattern = `^.{8,}$`
 	JWTKey               = "jYe8vbdGFD7RRnIf8W7KArU2ehZJbbn8"
+	bizLogin = "Login"
 )
 
 type UserHandler struct {
 	emailRexExp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
 	svc            *service.UserService
+	codeSvc        *service.CodeService
 }
 
 type UserClaims struct {
 	jwt.RegisteredClaims
-	Uid int64
+	Uid       int64
 	UserAgent string
 }
 
-func NewUserHandler(svc *service.UserService) *UserHandler {
+func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
 	return &UserHandler{
 		emailRexExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 		svc:            svc,
+		codeSvc: codeSvc,
 	}
 }
 
@@ -49,6 +51,88 @@ func (h *UserHandler) RegisterRoutes(server *gin.Engine) {
 	ug.POST("/login", h.LoginJWT)
 	ug.GET("/profile", h.Profile)
 	ug.POST("/edit", h.Edit)
+	ug.POST("/login_sms/code/send", h.SendSMSLoginCode)
+	ug.POST("/login_sms", h.LoginSMS)
+}
+
+func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		return
+	}
+	if req.Phone == "" {
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "Please input phone number",
+		})
+	}
+	err := h.codeSvc.Send(ctx, bizLogin, req.Phone)
+	switch err{
+	case nil:
+		ctx.JSON(http.StatusOK, Result{
+	
+			Msg:  "Successfully send the code",
+		})
+	case service.ErrCodeSendTooMany:
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "Send too many",
+		})
+	default:
+		ctx.JSON(http.StatusOK, Result{
+			Code: 4,
+			Msg:  "System error",
+		})
+
+	}
+
+}
+
+func (h *UserHandler) LoginSMS(ctx *gin.Context) {
+	type Req struct {
+		Phone string `json:"phone"`
+		Code string `json:"code"`
+	}
+	var req Req
+	if err := ctx.Bind(&req); err != nil {
+		log.Printf("system error: %v", err)
+		return
+	}
+
+	ok, err := h.codeSvc.Verify(ctx,  bizLogin, req.Phone, req.Code)
+	if err!=nil{
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "System error",
+		})
+		return
+	}
+	if !ok{
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "Wrong code",
+		})
+		return 
+	}
+
+	// login or create user
+	u, err := h.svc.FindOrCreate(ctx ,req.Phone)
+	if err!=nil{
+		ctx.JSON(http.StatusOK, Result{
+			Code: 5,
+			Msg:  "System error",
+		})
+		return
+	}
+	h.SetJWTToken(ctx, u.Id)
+	ctx.JSON(http.StatusOK, Result{
+		Msg:  "Successfully login",
+	})
+	return 
+
 }
 
 func (h *UserHandler) SignUp(ctx *gin.Context) {
@@ -139,6 +223,22 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 
 }
 
+func (h *UserHandler) SetJWTToken(ctx *gin.Context, uid int64){
+	uc := UserClaims{
+		Uid:       uid,
+		UserAgent: ctx.GetHeader("User-Agent"),
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30))},
+	}
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
+	tokenStr, err := token.SignedString([]byte(JWTKey))
+	//log.Printf("login token str: %v", tokenStr)
+	if err != nil {
+		ctx.String(http.StatusOK, "系统错误: %v", err)
+	}
+	ctx.Header("x-jwt-token", tokenStr)
+}
+
 func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 
 	type LoginReq struct {
@@ -153,20 +253,7 @@ func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 	user, err := h.svc.Login(ctx, req.Email, req.Password)
 	switch err {
 	case nil:
-		uc := UserClaims{
-			Uid: user.Id,
-			UserAgent: ctx.GetHeader("User-Agent"),
-			RegisteredClaims: jwt.RegisteredClaims{
-				ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute*30))},
-		}
-		token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
-		tokenStr, err := token.SignedString([]byte(JWTKey))
-		//log.Printf("login token str: %v", tokenStr)
-		if err != nil {
-			ctx.String(http.StatusOK, "系统错误: %v", err)
-		}
-		ctx.Header("x-jwt-token", tokenStr)
-
+		h.SetJWTToken(ctx, user.Id)
 		//log.Println("登录成功， tokenStr")
 		ctx.String(http.StatusOK, "登录成功")
 
