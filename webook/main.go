@@ -31,16 +31,16 @@ import (
 
 func main() {
 
-	db := initDB()
-	redisClient := initRedis()
+	// db := initDB()
+	// redisClient := initRedis()
 	
-	server := initWebServer(redisClient)
+	// server := initWebServer(redisClient)
 
-	smsSvc := initMemorySMS()
-	codeSvc := initCodeSvc(redisClient, smsSvc)
-	initUserHdl(db, redisClient, codeSvc,server)
+	// smsSvc := initMemorySMS()
+	// codeSvc := initCodeSvc(redisClient, smsSvc)
+	// initUserHdl(db, redisClient, codeSvc,server)
 
-	// server := gin.Default()
+	server := InitWebServer()
 	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello World")
 	})
