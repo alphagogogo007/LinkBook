@@ -17,7 +17,11 @@ type LoginJWTMiddlewareBuiler struct {
 func (m *LoginJWTMiddlewareBuiler) CheckLogin() gin.HandlerFunc {
 	return func(ctx *gin.Context) {
 		path := ctx.Request.URL.Path
-		if path == "/users/signup" || path == "/users/login" {
+		if path == "/users/signup" || 
+			path == "/users/login"||
+			path == "/users/login_sms/code/send" ||
+			path == "/users/login_sms" {
+			// no need to verfiy jwt
 			return
 		}
 		authCode := ctx.GetHeader("Authorization")
@@ -61,7 +65,7 @@ func (m *LoginJWTMiddlewareBuiler) CheckLogin() gin.HandlerFunc {
 		//log.Println("token str:", tokenStr)
 		if expireTime.Sub(time.Now()) < time.Minute*3 {
 			//刷新 jwt token
-			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute*15))
+			uc.ExpiresAt = jwt.NewNumericDate(time.Now().Add(time.Minute*30))
 			//token中有一个claim指针，所以修改uc.Expire就能直接对token生成tokenstr产生影响
 			tokenStr, err = token.SignedString([]byte(web.JWTKey))
 			ctx.Header("x-jwt-token", tokenStr)

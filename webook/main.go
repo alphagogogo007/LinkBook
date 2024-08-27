@@ -1,14 +1,19 @@
 package main
 
 import (
+	"context"
+	"log"
 	"net/http"
 	"strings"
 	"time"
 
 	"gitee.com/geekbang/basic-go/webook/config"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
 	"gitee.com/geekbang/basic-go/webook/internal/repository/dao"
 	"gitee.com/geekbang/basic-go/webook/internal/service"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
+	"gitee.com/geekbang/basic-go/webook/internal/service/sms/localsms"
 	"gitee.com/geekbang/basic-go/webook/internal/web"
 	login "gitee.com/geekbang/basic-go/webook/internal/web/middleware"
 	"gitee.com/geekbang/basic-go/webook/pkg/ginx/middleware/ratelimit"
@@ -22,15 +27,21 @@ import (
 	"gorm.io/gorm"
 )
 
+
+
 func main() {
 
 	db := initDB()
-	server := initWebServer()
+	redisClient := initRedis()
+	
+	server := initWebServer(redisClient)
 
-	initUserHdl(db, server)
+	smsSvc := initMemorySMS()
+	codeSvc := initCodeSvc(redisClient, smsSvc)
+	initUserHdl(db, redisClient, codeSvc,server)
 
 	// server := gin.Default()
-	server.GET("/hello",  func(ctx *gin.Context){
+	server.GET("/hello", func(ctx *gin.Context) {
 		ctx.String(http.StatusOK, "Hello World")
 	})
 
@@ -38,14 +49,32 @@ func main() {
 
 }
 
-func initUserHdl(db *gorm.DB, server *gin.Engine) {
+func initUserHdl(db *gorm.DB, redisClient redis.Cmdable, 
+	codeSvc *service.CodeService,
+	
+	server *gin.Engine) {
+
 	ud := dao.NewUserDao(db)
-	ur := repository.NewUserRepository(ud)
+	uc := cache.NewUserCache(redisClient)
+
+	ur := repository.NewUserRepository(ud, uc)
 	us := service.NewUserService(ur)
 
-	hdl := web.NewUserHandler(us)
+	hdl := web.NewUserHandler(us, codeSvc)
 	hdl.RegisterRoutes(server)
 }
+
+func initCodeSvc(redisClient redis.Cmdable, smsSvc sms.Service) *service.CodeService{
+	codeCache := cache.NewCodeCache(redisClient)
+	codeRepo := repository.NewCodeRepository(codeCache)
+	return service.NewCodeService(codeRepo, smsSvc)
+
+}
+
+func initMemorySMS() sms.Service{
+	return localsms.NewService()
+}
+
 
 func initDB() *gorm.DB {
 
@@ -62,7 +91,23 @@ func initDB() *gorm.DB {
 
 }
 
-func initWebServer() *gin.Engine {
+func initRedis() *redis.Client {
+
+	redisClient := redis.NewClient(&redis.Options{
+		Addr: config.Config.Redis.Addr,
+	})
+
+	// 检查 Redis 连接是否成功
+	ctx := context.Background()
+	_, err := redisClient.Ping(ctx).Result()
+	if err != nil {
+		log.Fatalf("Failed to connect to Redis: %v", err)
+	}
+	return redisClient
+}
+
+
+func initWebServer(redisClient redis.Cmdable) *gin.Engine {
 
 	server := gin.Default()
 
@@ -82,22 +127,18 @@ func initWebServer() *gin.Engine {
 		MaxAge: 12 * time.Hour,
 	}))
 
-
-	useRedisRatelimiter(server)
+	useRedisRatelimiter(server, redisClient)
 	useJWT(server)
 
 	return server
 }
 
-func useRedisRatelimiter(server *gin.Engine){
-	redisClient := redis.NewClient(&redis.Options{
-		Addr: config.Config.Redis.Addr,
-	})
+func useRedisRatelimiter(server *gin.Engine, redisClient redis.Cmdable) {
+
 	redisLimiter := limiter.NewRedisSlidingWindowLimiter(redisClient, time.Second, 100)
 
 	server.Use(ratelimit.NewBuilder(redisLimiter).Build())
 }
-
 
 func useJWT(server *gin.Engine) {
 	login := &login.LoginJWTMiddlewareBuiler{}

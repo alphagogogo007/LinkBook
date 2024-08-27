@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"time"
 
@@ -20,11 +21,14 @@ type UserDao struct {
 
 type User struct {
 	Id       int64  `gorm:"primaryKey,autoIncrement"`
-	Email    string `gorm:"unique"`
+	Email    sql.NullString `gorm:"unique"`
 	Password string
 	Nickname string `gorm:"type=varchar(128)"`
 	Birthday int64
 	AboutMe  string `gorm:"type=varchar(4096)"`
+
+	Phone sql.NullString `gorm:"unique"`
+
 	CreateAt int64
 	UpdateAt int64
 }
@@ -81,5 +85,11 @@ func (dao *UserDao) FindByEmail(ctx context.Context, email string) (User, error)
 func (dao *UserDao) FindById(ctx context.Context, uid int64) (User, error) {
 	var res User
 	err := dao.db.WithContext(ctx).Where("id = ?", uid).First(&res).Error
+	return res, err
+}
+
+func (dao *UserDao) FindByPhone(ctx context.Context, phone string) (User, error) {
+	var res User
+	err := dao.db.WithContext(ctx).Where("phone = ?", phone).First(&res).Error
 	return res, err
 }

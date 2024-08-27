@@ -6,14 +6,16 @@ import (
 
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
+	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
 )
 
 var (
-	ErrDuplicateEmail        = repository.ErrDuplicateEmail
+	ErrDuplicateEmail        = repository.ErrDuplicateUser
 	ErrInvalidUserOrPassword = errors.New("用户不存在或者密码不对")
+	ErrCodeSendTooMany = cache.ErrCodeSendTooMany
 )
 
 type UserService struct {
@@ -63,6 +65,22 @@ func (svc *UserService) UpdateNonSensitiveInfo(ctx context.Context,
 func (svc *UserService) FindById(ctx context.Context,
 	uid int64) (domain.User, error) {
 	return svc.repo.FindById(ctx, uid)
+}
+
+func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+
+	u, err := svc.repo.FindByPhone(ctx, phone)
+	if err != repository.ErrUserNotFound {
+		return u, err
+	}
+	err = svc.repo.Create(ctx, domain.User{
+		Phone: phone,
+	})
+	if err != nil && err != repository.ErrDuplicateUser {
+		return domain.User{}, err
+	}
+
+	return svc.repo.FindByPhone(ctx, phone)
 }
 
 func (svc *UserService) GetUserIdFromSession(ctx *gin.Context) (int64, error) {
