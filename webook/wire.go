@@ -15,15 +15,22 @@ import (
 func InitWebServer() *gin.Engine {
 
 	wire.Build(
+		//context
+		//ioc.InitContext,
+
 		//third party
 		ioc.InitDB,
 		ioc.InitRedis,
+		//ioc.InitBigCache,
 
 		//dao
 		dao.NewUserDao,
 
 		//cache
-		cache.NewRedisCodeCache, cache.NewRedisUserCache,
+		cache.NewRedisCodeCache, 
+		//cache.NewBigCacheCodeCache,
+		cache.NewRedisUserCache,
+		
 
 		//repository
 		repository.NewCodeRepository,

@@ -1,6 +1,7 @@
 package ioc
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -12,6 +13,10 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/redis/go-redis/v9"
 )
+
+func InitContext() context.Context{
+	return context.Background()
+}
 
 func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler) *gin.Engine {
 	server := gin.Default()

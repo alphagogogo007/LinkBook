@@ -3,6 +3,7 @@ module gitee.com/geekbang/basic-go
 go 1.21.0
 
 require (
+	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/dlclark/regexp2 v1.11.4
 	github.com/ecodeclub/ekit v0.0.9
 	github.com/gin-contrib/cors v1.7.2
