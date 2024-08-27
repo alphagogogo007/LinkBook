@@ -18,17 +18,23 @@ var (
 	ErrCodeVerifyTooMany = errors.New("Verify too many")
 )
 
-type CodeCache struct {
+type CodeCache interface{
+	Set(ctx context.Context, biz, phone, code string) error
+	Verify(ctx context.Context, biz, phone, code string) (bool,error) 
+	key(biz, phone string) string
+}
+
+type RedisCodeCache struct {
 	cmd redis.Cmdable
 }
 
-func NewCodeCache(cmd redis.Cmdable) *CodeCache {
-	return &CodeCache{
+func NewRedisCodeCache(cmd redis.Cmdable) CodeCache {
+	return &RedisCodeCache{
 		cmd: cmd,
 	}
 }
 
-func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
+func (c *RedisCodeCache) Set(ctx context.Context, biz, phone, code string) error {
 	res, err := c.cmd.Eval(ctx, luaSetCode, []string{c.key(biz, phone)}, code).Int()
 	if err != nil {
 		return err
@@ -46,7 +52,7 @@ func (c *CodeCache) Set(ctx context.Context, biz, phone, code string) error {
 
 }
 
-func (c *CodeCache) Verify(ctx context.Context, biz, phone, code string) (bool,error) {
+func (c *RedisCodeCache) Verify(ctx context.Context, biz, phone, code string) (bool,error) {
 	res, err := c.cmd.Eval(ctx, luaVerifyCode, []string{c.key(biz, phone)}, code).Int()
 	if err != nil {
 		return false, err
@@ -64,6 +70,6 @@ func (c *CodeCache) Verify(ctx context.Context, biz, phone, code string) (bool,e
 
 }
 
-func (c *CodeCache) key(biz, phone string) string {
+func (c *RedisCodeCache) key(biz, phone string) string {
 	return fmt.Sprintf("phone_code:%s:%s", biz, phone)
 }

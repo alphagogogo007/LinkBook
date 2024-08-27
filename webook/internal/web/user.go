@@ -19,14 +19,14 @@ const (
 	emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	passwordRegexPattern = `^.{8,}$`
 	JWTKey               = "jYe8vbdGFD7RRnIf8W7KArU2ehZJbbn8"
-	bizLogin = "Login"
+	bizLogin             = "Login"
 )
 
 type UserHandler struct {
 	emailRexExp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
-	svc            *service.UserService
-	codeSvc        *service.CodeService
+	svc            service.UserService
+	codeSvc        service.CodeService
 }
 
 type UserClaims struct {
@@ -35,12 +35,12 @@ type UserClaims struct {
 	UserAgent string
 }
 
-func NewUserHandler(svc *service.UserService, codeSvc *service.CodeService) *UserHandler {
+func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
 	return &UserHandler{
 		emailRexExp:    regexp.MustCompile(emailRegexPattern, regexp.None),
 		passwordRexExp: regexp.MustCompile(passwordRegexPattern, regexp.None),
 		svc:            svc,
-		codeSvc: codeSvc,
+		codeSvc:        codeSvc,
 	}
 }
 
@@ -70,11 +70,11 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 		})
 	}
 	err := h.codeSvc.Send(ctx, bizLogin, req.Phone)
-	switch err{
+	switch err {
 	case nil:
 		ctx.JSON(http.StatusOK, Result{
-	
-			Msg:  "Successfully send the code",
+
+			Msg: "Successfully send the code",
 		})
 	case service.ErrCodeSendTooMany:
 		ctx.JSON(http.StatusOK, Result{
@@ -94,7 +94,7 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 func (h *UserHandler) LoginSMS(ctx *gin.Context) {
 	type Req struct {
 		Phone string `json:"phone"`
-		Code string `json:"code"`
+		Code  string `json:"code"`
 	}
 	var req Req
 	if err := ctx.Bind(&req); err != nil {
@@ -102,25 +102,25 @@ func (h *UserHandler) LoginSMS(ctx *gin.Context) {
 		return
 	}
 
-	ok, err := h.codeSvc.Verify(ctx,  bizLogin, req.Phone, req.Code)
-	if err!=nil{
+	ok, err := h.codeSvc.Verify(ctx, bizLogin, req.Phone, req.Code)
+	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
 			Msg:  "System error",
 		})
 		return
 	}
-	if !ok{
+	if !ok {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
 			Msg:  "Wrong code",
 		})
-		return 
+		return
 	}
 
 	// login or create user
-	u, err := h.svc.FindOrCreate(ctx ,req.Phone)
-	if err!=nil{
+	u, err := h.svc.FindOrCreate(ctx, req.Phone)
+	if err != nil {
 		ctx.JSON(http.StatusOK, Result{
 			Code: 5,
 			Msg:  "System error",
@@ -129,9 +129,9 @@ func (h *UserHandler) LoginSMS(ctx *gin.Context) {
 	}
 	h.SetJWTToken(ctx, u.Id)
 	ctx.JSON(http.StatusOK, Result{
-		Msg:  "Successfully login",
+		Msg: "Successfully login",
 	})
-	return 
+	return
 
 }
 
@@ -223,7 +223,7 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 
 }
 
-func (h *UserHandler) SetJWTToken(ctx *gin.Context, uid int64){
+func (h *UserHandler) SetJWTToken(ctx *gin.Context, uid int64) {
 	uc := UserClaims{
 		Uid:       uid,
 		UserAgent: ctx.GetHeader("User-Agent"),

@@ -15,20 +15,31 @@ import (
 var (
 	ErrDuplicateEmail        = repository.ErrDuplicateUser
 	ErrInvalidUserOrPassword = errors.New("用户不存在或者密码不对")
-	ErrCodeSendTooMany = cache.ErrCodeSendTooMany
+	ErrCodeSendTooMany       = cache.ErrCodeSendTooMany
 )
 
-type UserService struct {
-	repo *repository.UserRepository
+type UserService interface {
+	SignUp(ctx context.Context, user domain.User) error
+	Login(ctx context.Context, email string, password string) (domain.User, error)
+	UpdateNonSensitiveInfo(ctx context.Context,
+		user domain.User) error
+	FindById(ctx context.Context,
+		uid int64) (domain.User, error)
+	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	GetUserIdFromSession(ctx *gin.Context) (int64, error)
 }
 
-func NewUserService(repo *repository.UserRepository) *UserService {
-	return &UserService{
+type RegularUserService struct {
+	repo repository.UserRepository
+}
+
+func NewUserService(repo repository.UserRepository) UserService {
+	return &RegularUserService{
 		repo: repo,
 	}
 }
 
-func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
+func (svc *RegularUserService) SignUp(ctx context.Context, user domain.User) error {
 	hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), bcrypt.DefaultCost)
 	if err != nil {
 		return err
@@ -39,7 +50,7 @@ func (svc *UserService) SignUp(ctx context.Context, user domain.User) error {
 }
 
 // 为什么这里要返回一个domain user？
-func (svc *UserService) Login(ctx context.Context, email string, password string) (domain.User, error) {
+func (svc *RegularUserService) Login(ctx context.Context, email string, password string) (domain.User, error) {
 	user, err := svc.repo.FindByEmail(ctx, email)
 
 	if err == repository.ErrUserNotFound {
@@ -56,18 +67,18 @@ func (svc *UserService) Login(ctx context.Context, email string, password string
 
 }
 
-func (svc *UserService) UpdateNonSensitiveInfo(ctx context.Context,
+func (svc *RegularUserService) UpdateNonSensitiveInfo(ctx context.Context,
 	user domain.User) error {
 	// UpdateNicknameAndXXAnd
 	return svc.repo.UpdateNonZeroFields(ctx, user)
 }
 
-func (svc *UserService) FindById(ctx context.Context,
+func (svc *RegularUserService) FindById(ctx context.Context,
 	uid int64) (domain.User, error) {
 	return svc.repo.FindById(ctx, uid)
 }
 
-func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
+func (svc *RegularUserService) FindOrCreate(ctx context.Context, phone string) (domain.User, error) {
 
 	u, err := svc.repo.FindByPhone(ctx, phone)
 	if err != repository.ErrUserNotFound {
@@ -83,7 +94,7 @@ func (svc *UserService) FindOrCreate(ctx context.Context, phone string) (domain.
 	return svc.repo.FindByPhone(ctx, phone)
 }
 
-func (svc *UserService) GetUserIdFromSession(ctx *gin.Context) (int64, error) {
+func (svc *RegularUserService) GetUserIdFromSession(ctx *gin.Context) (int64, error) {
 
 	sess := sessions.Default(ctx)
 	userId := sess.Get("userId")
