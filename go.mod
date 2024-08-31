@@ -3,6 +3,7 @@ module gitee.com/geekbang/basic-go
 go 1.21.0
 
 require (
+	github.com/DATA-DOG/go-sqlmock v1.5.0
 	github.com/allegro/bigcache/v3 v3.1.0
 	github.com/dlclark/regexp2 v1.11.4
 	github.com/ecodeclub/ekit v0.0.9
@@ -15,6 +16,7 @@ require (
 	github.com/redis/go-redis/v9 v9.6.1
 	github.com/stretchr/testify v1.9.0
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.0.989
+	go.uber.org/mock v0.4.0
 	golang.org/x/crypto v0.23.0
 	gorm.io/driver/mysql v1.5.7
 	gorm.io/gorm v1.25.11

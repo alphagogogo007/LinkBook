@@ -140,10 +140,11 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 	type SignUpReq struct {
 		Email           string `json:"email"`
 		Password        string `json:"password"`
-		ConfirmPassword string `json:"confirmpassword"`
+		ConfirmPassword string `json:"confirmPassword"`
 	}
 	var req SignUpReq
 	if err := ctx.Bind(&req); err != nil {
+		log.Println(err)
 		return
 	}
 
@@ -153,7 +154,7 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	if !isEmail {
-		ctx.String(http.StatusOK, "非法邮箱格式")
+		ctx.String(http.StatusOK, "illegal email name")
 		return
 	}
 
@@ -163,11 +164,11 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 		return
 	}
 	if !isPassword {
-		ctx.String(http.StatusOK, "密码格式不对，至少需要八位密码")
+		ctx.String(http.StatusOK, "The password format is incorrect; it must be at least eight characters long.")
 		return
 	}
 	if req.Password != req.ConfirmPassword {
-		ctx.String(http.StatusOK, "两次密码输入不对")
+		ctx.String(http.StatusOK, "The passwords entered do not match")
 		return
 	}
 
@@ -178,11 +179,11 @@ func (h *UserHandler) SignUp(ctx *gin.Context) {
 
 	switch err {
 	case nil:
-		ctx.String(http.StatusOK, "hello, you are signing up")
+		ctx.String(http.StatusOK, "hello, successfully signing up")
 	case service.ErrDuplicateEmail:
-		ctx.String(http.StatusOK, "邮箱冲突，请换一个")
+		ctx.String(http.StatusOK, "Email conflict, please use a different one.")
 	default:
-		ctx.String(http.StatusOK, "系统错误")
+		ctx.String(http.StatusOK, "system error")
 
 	}
 

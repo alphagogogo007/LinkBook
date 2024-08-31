@@ -17,8 +17,8 @@ var (
 	luaSetCode string
 	//go:embed lua/verify_code.lua
 	luaVerifyCode        string
-	ErrCodeSendTooMany   = errors.New("Send too many")
-	ErrCodeVerifyTooMany = errors.New("Verify too many")
+	ErrCodeSendTooMany   = errors.New("send too many")
+	ErrCodeVerifyTooMany = errors.New("verify too many")
 )
 
 type CodeCache interface {
