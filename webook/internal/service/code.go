@@ -9,6 +9,11 @@ import (
 	"gitee.com/geekbang/basic-go/webook/internal/service/sms"
 )
 
+var (
+	ErrCodeVerifyTooMany = repository.ErrCodeVerifyTooMany
+	ErrCodeSendTooMany = repository.ErrCodeSendTooMany
+)
+
 type CodeService interface {
 	Send(ctx context.Context, biz string, phone string) error
 	Verify(ctx context.Context, biz string, phone string, inputCode string) (bool, error)

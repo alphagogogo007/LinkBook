@@ -6,7 +6,10 @@ import (
 	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
 )
 
-var ErrCodeVerifyTooMany = cache.ErrCodeVerifyTooMany
+var (
+	ErrCodeVerifyTooMany = cache.ErrCodeVerifyTooMany
+	ErrCodeSendTooMany = cache.ErrCodeSendTooMany
+)
 
 //TO DO
 // interface

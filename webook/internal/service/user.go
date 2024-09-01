@@ -6,7 +6,6 @@ import (
 
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
 	"gitee.com/geekbang/basic-go/webook/internal/repository"
-	"gitee.com/geekbang/basic-go/webook/internal/repository/cache"
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -15,7 +14,6 @@ import (
 var (
 	ErrDuplicateEmail        = repository.ErrDuplicateUser
 	ErrInvalidUserOrPassword = errors.New("用户不存在或者密码不对")
-	ErrCodeSendTooMany       = cache.ErrCodeSendTooMany
 )
 
 type UserService interface {
