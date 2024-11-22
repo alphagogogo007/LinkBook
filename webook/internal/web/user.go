@@ -69,7 +69,9 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 			Msg:  "Please input phone number",
 		})
 	}
+	//log.Println(bizLogin, req.Phone)
 	err := h.codeSvc.Send(ctx, bizLogin, req.Phone)
+	//log.Println(err)
 	switch err {
 	case nil:
 		ctx.JSON(http.StatusOK, Result{
@@ -83,7 +85,7 @@ func (h *UserHandler) SendSMSLoginCode(ctx *gin.Context) {
 		})
 	default:
 		ctx.JSON(http.StatusOK, Result{
-			Code: 4,
+			Code: 5,
 			Msg:  "System error",
 		})
 
