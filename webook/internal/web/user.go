@@ -12,28 +12,22 @@ import (
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 
-	jwt "github.com/golang-jwt/jwt/v5"
 )
 
 const (
 	emailRegexPattern    = `^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
 	passwordRegexPattern = `^.{8,}$`
-	JWTKey               = "jYe8vbdGFD7RRnIf8W7KArU2ehZJbbn8"
 	bizLogin             = "Login"
 )
 
 type UserHandler struct {
+	jwtHandler
 	emailRexExp    *regexp.Regexp
 	passwordRexExp *regexp.Regexp
 	svc            service.UserService
 	codeSvc        service.CodeService
 }
 
-type UserClaims struct {
-	jwt.RegisteredClaims
-	Uid       int64
-	UserAgent string
-}
 
 func NewUserHandler(svc service.UserService, codeSvc service.CodeService) *UserHandler {
 	return &UserHandler{
@@ -226,21 +220,6 @@ func (h *UserHandler) Login(ctx *gin.Context) {
 
 }
 
-func (h *UserHandler) SetJWTToken(ctx *gin.Context, uid int64) {
-	uc := UserClaims{
-		Uid:       uid,
-		UserAgent: ctx.GetHeader("User-Agent"),
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute * 30))},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, uc)
-	tokenStr, err := token.SignedString([]byte(JWTKey))
-	//log.Printf("login token str: %v", tokenStr)
-	if err != nil {
-		ctx.String(http.StatusOK, "系统错误: %v", err)
-	}
-	ctx.Header("x-jwt-token", tokenStr)
-}
 
 func (h *UserHandler) LoginJWT(ctx *gin.Context) {
 

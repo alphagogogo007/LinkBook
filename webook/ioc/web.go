@@ -18,10 +18,11 @@ func InitContext() context.Context{
 	return context.Background()
 }
 
-func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler) *gin.Engine {
+func InitWebServer(mdls []gin.HandlerFunc, userHdl *web.UserHandler, wechatHdl *web.OAuth2WechatHandler) *gin.Engine {
 	server := gin.Default()
 	server.Use(mdls...)
 	userHdl.RegisterRoutes(server)
+	wechatHdl.RegisterRoutes(server)
 	return server
 
 }
