@@ -9,12 +9,12 @@ import (
 
 
 	"gitee.com/geekbang/basic-go/webook/internal/domain"
-	uuid "github.com/lithammer/shortuuid/v4"
+
 
 )
 
 type Service interface{
-	AuthURL(ctx context.Context) (string, error)
+	AuthURL(ctx context.Context, state string) (string, error)
 	VerifyCode(ctx context.Context, code string) (domain.WechatInfo, error)
 
 }
@@ -66,9 +66,9 @@ func (s *service) VerifyCode(ctx context.Context,
 		}, nil
 }
 
-func (s *service) AuthURL(ctx context.Context) (string, error){
+func (s *service) AuthURL(ctx context.Context, state string) (string, error){
 	
-	state := uuid.New()
+	
 	const authURLPattern = `https://open.weixin.qq.com/connect/qrconnect?appid=%s&redirect_uri=%s&response_type=code&scope=snsapi_login&state=%s#wechat_redirect`
 	return fmt.Sprintf(authURLPattern, s.appID, redirectURL, state), nil
 
