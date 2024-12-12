@@ -24,6 +24,7 @@ type UserService interface {
 	FindById(ctx context.Context,
 		uid int64) (domain.User, error)
 	FindOrCreate(ctx context.Context, phone string) (domain.User, error)
+	FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error)
 	GetUserIdFromSession(ctx *gin.Context) (int64, error)
 }
 
@@ -90,6 +91,23 @@ func (svc *RegularUserService) FindOrCreate(ctx context.Context, phone string) (
 	}
 
 	return svc.repo.FindByPhone(ctx, phone)
+}
+
+func (svc *RegularUserService) FindOrCreateByWechat(ctx context.Context, info domain.WechatInfo) (domain.User, error) {
+
+	u, err := svc.repo.FindByWechat(ctx, info.OpenId)
+	if err != repository.ErrUserNotFound {
+		return u, err
+	}
+	err = svc.repo.Create(ctx, domain.User{
+		WechatInfo: info,
+	})
+	if err != nil && err != repository.ErrDuplicateUser {
+		return domain.User{}, err
+	}
+
+	return svc.repo.FindByWechat(ctx, info.OpenId)
+
 }
 
 func (svc *RegularUserService) GetUserIdFromSession(ctx *gin.Context) (int64, error) {

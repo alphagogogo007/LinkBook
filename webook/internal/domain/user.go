@@ -13,5 +13,7 @@ type User struct {
 	AboutMe  string
 
 	Phone string
+
+	WechatInfo 
 }
 

@@ -12,6 +12,7 @@ import (
 	"github.com/google/wire"
 )
 
+//这些代码是干嘛的，明明已经有wire了？？？用于integration test的
 func InitWebServer() *gin.Engine {
 
 	wire.Build(
@@ -38,11 +39,13 @@ func InitWebServer() *gin.Engine {
 
 		//service
 		ioc.InitSMSService,
+		ioc.InitWechatService,
 		service.NewUserService,
 		service.NewCodeService,
 
 		//handler
 		web.NewUserHandler,
+		web.NewOAuth2WechatHandler,
 
 		ioc.NewLimiter,
 		ioc.InitGinMiddlewares,
